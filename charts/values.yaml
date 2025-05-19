@@ -1,0 +1,134 @@
+# Default values for gestion-produits
+
+# Namespace configuration
+namespace: gestion-produits
+
+# Image configuration
+app:
+  image:
+    repository: registry.germainleignel.com/library/gestion-produits
+    tag: latest
+    pullPolicy: Always
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "1000m"
+    requests:
+      memory: "256Mi"
+      cpu: "500m"
+  # App healthcheck configuration
+  healthcheck:
+    enabled: true
+    livenessProbe:
+      path: /index.php
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      path: /index.php
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 3
+      successThreshold: 1
+      failureThreshold: 3
+    startupProbe:
+      path: /index.php
+      initialDelaySeconds: 20
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 12  # Allow 2 minutes (12 * 10s) for startup
+
+appMigrations:
+  image:
+    repository: registry.germainleignel.com/library/gestion-produits-migrations
+    tag: latest
+
+appUploads:
+  image:
+    repository: registry.germainleignel.com/library/gestion-produits-uploads
+    tag: latest
+
+# Database configuration
+db:
+  image:
+    repository: mysql
+    tag: "8.0"
+  resources:
+    limits:
+      memory: "2048Mi"
+      cpu: "2000m"
+    requests:
+      memory: "1024Mi"
+      cpu: "1000m"
+  rootPassword: "root"
+  database: "gestion_produits"
+  rootHost: "%"
+  # Database configuration
+  configuration: |
+    [mysqld]
+    skip-host-cache
+    skip-name-resolve
+    default_authentication_plugin=mysql_native_password
+    max_connections=1000
+    max_allowed_packet=256M
+    innodb_buffer_pool_size=1G
+    innodb_log_file_size=256M
+    innodb_log_buffer_size=8M
+    innodb_flush_log_at_trx_commit=1
+    innodb_flush_method=O_DIRECT
+    
+  # Database healthcheck configuration
+  healthcheck:
+    enabled: true
+    livenessProbe:
+      initialDelaySeconds: 120  # Increased initial delay
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      initialDelaySeconds: 90  # Increased initial delay
+      periodSeconds: 10
+      timeoutSeconds: 5  # Increased timeout
+      successThreshold: 1
+      failureThreshold: 10  # Increased failure threshold
+    startupProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 30  # Allow up to 5 minutes for startup (30 * 10s)
+
+# Persistence configuration
+persistence:
+  storageClass: longhorn
+  db:
+    size: 5Gi
+  uploads:
+    size: 2Gi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.tls: "true"
+  hosts:
+    - host: gestion-produits.germainleignel.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: gestion-produits-tls
+      hosts:
+        - gestion-produits.germainleignel.com
+
+# Certificate configuration
+certificate:
+  enabled: true
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  secretName: gestion-produits-tls
+  dnsNames:
+    - gestion-produits.germainleignel.com

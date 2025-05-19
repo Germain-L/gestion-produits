@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-db
+  namespace: {{ .Release.Namespace | default .Values.namespace }}
+  labels:
+    {{- include "gestion-produits.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-db
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-db
+        {{- include "gestion-produits.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: db
+        image: {{ .Values.db.image.repository }}:{{ .Values.db.image.tag }}
+        resources:
+          {{- toYaml .Values.db.resources | nindent 10 }}
+        ports:
+        - containerPort: 3306
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            value: {{ .Values.db.rootPassword | quote }}
+          - name: MYSQL_DATABASE
+            value: {{ .Values.db.database | quote }}
+          - name: MYSQL_ROOT_HOST
+            value: {{ .Values.db.rootHost | quote }}
+          - name: MYSQL_INITDB_SKIP_TZINFO
+            value: "1"
+        volumeMounts:
+          - name: db-data
+            mountPath: /var/lib/mysql
+          - name: mysql-config
+            mountPath: /etc/mysql/conf.d/custom.cnf
+            subPath: custom.cnf
+      volumes:
+        - name: db-data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-db-pvc
+        - name: mysql-config
+          configMap:
+            name: {{ .Release.Name }}-mysql-config

@@ -1,0 +1,18 @@
+{{- if .Values.certificate.enabled -}}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Name }}-certificate
+  namespace: {{ .Release.Namespace | default .Values.namespace }}
+  labels:
+    {{- include "gestion-produits.labels" . | nindent 4 }}
+spec:
+  secretName: {{ .Values.certificate.secretName }}
+  issuerRef:
+    name: {{ .Values.certificate.issuerRef.name }}
+    kind: {{ .Values.certificate.issuerRef.kind }}
+  dnsNames:
+  {{- range .Values.certificate.dnsNames }}
+    - {{ . | quote }}
+  {{- end }}
+{{- end }}

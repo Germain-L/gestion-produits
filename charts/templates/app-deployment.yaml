@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-app
+  namespace: {{ .Release.Namespace | default .Values.namespace }}
+  labels:
+    {{- include "gestion-produits.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-app
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-app
+        {{- include "gestion-produits.selectorLabels" . | nindent 8 }}
+    spec:
+      initContainers:
+      - name: init-db
+        image: {{ .Values.appMigrations.image.repository }}:{{ .Values.appMigrations.image.tag }}
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: {{ .Values.db.rootPassword | quote }}
+        - name: MYSQL_HOST
+          value: "{{ .Release.Name }}-db.{{ .Release.Namespace | default .Values.namespace }}.svc.cluster.local"
+        - name: MYSQL_DATABASE
+          value: {{ .Values.db.database | quote }}
+      - name: init-uploads
+        image: {{ .Values.appUploads.image.repository }}:{{ .Values.appUploads.image.tag }}
+        command: ['sh', '-c', 'cp -r /data/* /uploads/']
+        volumeMounts:
+        - name: uploads-data
+          mountPath: /uploads
+      containers:
+      - name: app
+        image: {{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}
+        imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+        resources:
+          {{- toYaml .Values.app.resources | nindent 10 }}
+        ports:
+        - containerPort: 80
+        env:
+        - name: DB_HOST
+          value: "{{ .Release.Name }}-db.{{ .Release.Namespace | default .Values.namespace }}.svc.cluster.local"
+        - name: DB_USER
+          value: root
+        - name: DB_PASSWORD
+          value: {{ .Values.db.rootPassword | quote }}
+        - name: DB_NAME
+          value: {{ .Values.db.database | quote }}
+        - name: DB_PORT
+          value: "3306"
+        volumeMounts:
+        - name: uploads-data
+          mountPath: /var/www/html/uploads
+        {{- if .Values.app.healthcheck.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.app.healthcheck.livenessProbe.path }}
+            port: 80
+          initialDelaySeconds: {{ .Values.app.healthcheck.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.app.healthcheck.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.app.healthcheck.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.app.healthcheck.livenessProbe.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.app.healthcheck.readinessProbe.path }}
+            port: 80
+          initialDelaySeconds: {{ .Values.app.healthcheck.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.app.healthcheck.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.app.healthcheck.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.app.healthcheck.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.app.healthcheck.readinessProbe.failureThreshold }}
+        startupProbe:
+          httpGet:
+            path: {{ .Values.app.healthcheck.startupProbe.path }}
+            port: 80
+          initialDelaySeconds: {{ .Values.app.healthcheck.startupProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.app.healthcheck.startupProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.app.healthcheck.startupProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.app.healthcheck.startupProbe.failureThreshold }}
+        {{- end }}
+      volumes:
+        - name: uploads-data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-uploads-pvc
