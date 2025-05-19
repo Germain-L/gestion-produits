@@ -11,11 +11,11 @@ app:
     pullPolicy: Always
   resources:
     limits:
-      memory: "512Mi"
-      cpu: "1000m"
-    requests:
       memory: "256Mi"
       cpu: "500m"
+    requests:
+      memory: "128Mi"
+      cpu: "200m"
   # App healthcheck configuration
   healthcheck:
     enabled: true
@@ -56,11 +56,11 @@ db:
     tag: "8.0"
   resources:
     limits:
-      memory: "2048Mi"
-      cpu: "2000m"
-    requests:
       memory: "1024Mi"
       cpu: "1000m"
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
   rootPassword: "root"
   database: "gestion_produits"
   rootHost: "%"
@@ -72,7 +72,7 @@ db:
     default_authentication_plugin=mysql_native_password
     max_connections=1000
     max_allowed_packet=256M
-    innodb_buffer_pool_size=1G
+    innodb_buffer_pool_size=512M
     innodb_log_file_size=256M
     innodb_log_buffer_size=8M
     innodb_flush_log_at_trx_commit=1

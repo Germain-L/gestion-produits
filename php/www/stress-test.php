@@ -1,8 +1,12 @@
 <?php
 header('Content-Type: application/json');
 
+// Récupérer le chemin de la requête
+$request_uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$request_path = trim(str_replace('/stress-test', '', $request_uri), '/');
+
 // Endpoint de calcul intensif (CPU)
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) === '/stress-test/cpu') {
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && strpos($request_path, 'cpu') === 0) {
     $iterations = isset($_GET['iterations']) ? (int)$_GET['iterations'] : 1000000;
     $start = microtime(true);
     $result = 0;
@@ -28,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && parse_url($_SERVER['REQUEST_URI'], P
 }
 
 // Endpoint de consommation mémoire
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) === '/stress-test/memory') {
+elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && strpos($request_path, 'memory') === 0) {
     $mb = min(4096, isset($_GET['mb']) ? (int)$_GET['mb'] : 10); // Max 4GB pour des raisons de sécurité
     $duration = isset($_GET['duration']) ? (int)$_GET['duration'] : 5;
     
@@ -61,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && parse_url($_SERVER['REQUEST_URI'], P
 }
 
 // Endpoint de statut
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) === '/stress-test/status') {
+elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && strpos($request_path, 'status') === 0) {
     echo json_encode([
         'status' => 'ok',
         'server' => gethostname(),
