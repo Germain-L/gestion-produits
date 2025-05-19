@@ -47,6 +47,9 @@ push-migrations:
 push-uploads:
 	docker push $(UPLOADS_IMAGE)
 
+# Kubernetes namespace
+NAMESPACE = gestion-produits
+
 # Build and push all images
 all: build build-migrations build-uploads push
 
@@ -54,13 +57,67 @@ all: build build-migrations build-uploads push
 login:
 	docker login $(REGISTRY)
 
-# Start the application with docker-compose
+# Docker Compose commands
 up:
 	docker-compose up -d
 
-# Stop and remove the application
 down:
 	docker-compose down
+
+# Kubernetes apply commands
+k8s-apply:
+	kubectl apply -f k8s/01-db-pvc.yaml -n $(NAMESPACE)
+	kubectl apply -f k8s/02-db-deployment.yaml -n $(NAMESPACE)
+	kubectl apply -f k8s/03-db-service.yaml -n $(NAMESPACE)
+	kubectl apply -f k8s/04-app-pvc.yaml -n $(NAMESPACE)
+	kubectl apply -f k8s/05-app-deployment.yaml -n $(NAMESPACE)
+	kubectl apply -f k8s/06-app-service.yaml -n $(NAMESPACE)
+	kubectl apply -f k8s/07-app-certificate.yaml -n $(NAMESPACE)
+	kubectl apply -f k8s/08-app-ingress.yaml -n $(NAMESPACE)
+
+# Delete all Kubernetes resources (except PVCs by default)
+k8s-delete:
+	@echo "Deleting Kubernetes resources..."
+	kubectl delete -f k8s/08-app-ingress.yaml --ignore-not-found=true -n $(NAMESPACE)
+	kubectl delete -f k8s/07-app-certificate.yaml --ignore-not-found=true -n $(NAMESPACE)
+	kubectl delete -f k8s/06-app-service.yaml --ignore-not-found=true -n $(NAMESPACE)
+	kubectl delete -f k8s/05-app-deployment.yaml --ignore-not-found=true -n $(NAMESPACE)
+	kubectl delete -f k8s/04-app-pvc.yaml --ignore-not-found=true -n $(NAMESPACE)
+	kubectl delete -f k8s/03-db-service.yaml --ignore-not-found=true -n $(NAMESPACE)
+	kubectl delete -f k8s/02-db-deployment.yaml --ignore-not-found=true -n $(NAMESPACE)
+	@echo "Note: PVCs are preserved by default. Use 'make k8s-delete-all' to delete everything including PVCs"
+
+# Delete all Kubernetes resources including PVCs (data will be lost!)
+k8s-delete-all:
+	@echo "WARNING: This will delete all resources including PVCs (data will be lost!)"
+	@read -p "Are you sure? (y/n) " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+	    make k8s-delete; \
+	    kubectl delete pvc -l app=gestion-produits --ignore-not-found=true -n $(NAMESPACE); \
+	    echo "All resources including PVCs have been deleted"; \
+	fi
+
+# Restart the application (deployment rollout)
+k8s-restart:
+	kubectl rollout restart deployment/gestion-produits -n $(NAMESPACE)
+
+# Get pod status
+k8s-status:
+	@echo "=== Pods ==="
+	kubectl get pods -n $(NAMESPACE) -l app=gestion-produits
+	@echo "\n=== Services ==="
+	kubectl get svc -n $(NAMESPACE) -l app=gestion-produits
+	@echo "\n=== Ingress ==="
+	kubectl get ingress -n $(NAMESPACE)
+
+# Tail logs from the application
+k8s-logs:
+	kubectl logs -f -l app=gestion-produits -n $(NAMESPACE) --tail=100 --all-containers
+
+# Port-forward to the application service
+k8s-forward:
+	kubectl port-forward svc/gestion-produits 8080:80 -n $(NAMESPACE)
 
 # Show logs
 logs:

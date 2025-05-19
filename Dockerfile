@@ -18,20 +18,21 @@ RUN a2enmod rewrite
 # Set the working directory
 WORKDIR /var/www/html
 
-# Create uploads directory and set proper permissions
-RUN mkdir -p /var/www/html/uploads \
-    && chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html/uploads \
-    && chmod +t /var/www/html/uploads  # Add sticky bit
+# Create uploads directory (permissions will be set in entrypoint)
+RUN mkdir -p /var/www/html/uploads
 
-# Copy the application files after setting permissions
+# Copy the application files
 COPY php/www/ /var/www/html/
 
-# Ensure the uploads directory has the correct ownership
-RUN chown -R www-data:www-data /var/www/html/uploads
+# Copy the entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose port 80
 EXPOSE 80
 
-# Start Apache in the foreground
+# Set the entrypoint
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+# Default command
 CMD ["apache2-foreground"]
