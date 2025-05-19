@@ -102,6 +102,10 @@ graph TD
 ![Tableau de bord de monitoring](img/grafana.png)
 *Figure 3 : Métriques de performance dans Grafana*
 
+### Tableau de bord Longhorn
+![Tableau de bord de monitoring](img/longhorn.png)
+*Figure 4 : Métriques de performance dans Longhorn*
+
 ## 5. Principales configurations (values.yaml)
 - **namespace** : namespace Kubernetes
 - **app.image** : repository, tag, pullPolicy
