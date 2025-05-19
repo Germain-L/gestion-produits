@@ -51,6 +51,7 @@ charts/
     ├── app-scaledobject.yaml
     ├── app-pvc.yaml
     ├── db-deployment.yaml
+```
 
 ## 5. Démonstration
 
