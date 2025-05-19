@@ -49,6 +49,6 @@ try {
 } catch (PDOException $e) {
     // Log the full error but show a user-friendly message
     error_log('Database connection error: ' . $e->getMessage());
-    die('Unable to connect to the database. Please try again later.');
+    die('Unable to connect to the database: ' . $e->getMessage());
 }
 ?>

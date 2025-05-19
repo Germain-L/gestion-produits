@@ -100,24 +100,24 @@ k8s-delete-all:
 
 # Restart the application (deployment rollout)
 k8s-restart:
-	kubectl rollout restart deployment/gestion-produits -n $(NAMESPACE)
+	kubectl rollout restart deployment/gestion-produits-app -n $(NAMESPACE)
 
 # Get pod status
 k8s-status:
 	@echo "=== Pods ==="
-	kubectl get pods -n $(NAMESPACE) -l app=gestion-produits
+	kubectl get pods -n $(NAMESPACE) -l app=gestion-produits-app
 	@echo "\n=== Services ==="
-	kubectl get svc -n $(NAMESPACE) -l app=gestion-produits
+	kubectl get svc -n $(NAMESPACE) -l app=gestion-produits-app
 	@echo "\n=== Ingress ==="
 	kubectl get ingress -n $(NAMESPACE)
 
 # Tail logs from the application
 k8s-logs:
-	kubectl logs -f -l app=gestion-produits -n $(NAMESPACE) --tail=100 --all-containers
+	kubectl logs -f -l app=gestion-produits-app -n $(NAMESPACE) --tail=100 --all-containers
 
 # Port-forward to the application service
 k8s-forward:
-	kubectl port-forward svc/gestion-produits 8080:80 -n $(NAMESPACE)
+	kubectl port-forward svc/gestion-produits-app 8080:80 -n $(NAMESPACE)
 
 # Show logs
 logs:
