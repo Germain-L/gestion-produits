@@ -114,14 +114,14 @@ ingress:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     traefik.ingress.kubernetes.io/router.tls: "true"
   hosts:
-    - host: gestion-produits.germainleignel.com
+    - host: gestion-produits-masset.germainleignel.com
       paths:
         - path: /
           pathType: Prefix
   tls:
     - secretName: gestion-produits-tls
       hosts:
-        - gestion-produits.germainleignel.com
+        - gestion-produits-masset.germainleignel.com
 
 # Certificate configuration
 certificate:
@@ -131,4 +131,4 @@ certificate:
     kind: ClusterIssuer
   secretName: gestion-produits-tls
   dnsNames:
-    - gestion-produits.germainleignel.com
+    - gestion-produits-masset.germainleignel.com
