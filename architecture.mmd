@@ -3,7 +3,7 @@ graph TD
         subgraph gestion-produits [Namespace: gestion-produits]
             subgraph app [Application]
                 A[Application PHP] -->|Lit/Écrit| B[(MySQL)]
-                A -->|Stocke fichiers| PV1[(Stockage NFS)]
+                A -->|Stocke fichiers| PV1[(Longhorn Storage)]
             end
             
             subgraph monitoring [Monitoring]
