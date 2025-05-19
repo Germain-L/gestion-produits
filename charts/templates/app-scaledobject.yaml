@@ -1,0 +1,54 @@
+{{- if .Values.keda.enabled -}}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ .Release.Name }}-app
+  namespace: {{ .Release.Namespace | default .Values.namespace }}
+  labels:
+    {{- include "gestion-produits.labels" . | nindent 4 }}
+    app.kubernetes.io/component: keda-scaledobject
+spec:
+  scaleTargetRef:
+    name: {{ .Release.Name }}-app
+    kind: Deployment
+  minReplicaCount: {{ .Values.keda.scaling.minReplicas }}
+  maxReplicaCount: {{ .Values.keda.scaling.maxReplicas }}
+  cooldownPeriod: 300  # 5 minutes cooldown period
+  pollingInterval: 15  # Check metrics every 15 seconds
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 20
+            periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+          - type: Percent
+            value: 20
+            periodSeconds: 30
+  triggers:
+  {{- if .Values.keda.scaling.cpu.enabled }}
+  - type: cpu
+    metadata:
+      type: Utilization
+      value: "{{ .Values.keda.scaling.cpu.targetUtilization }}"
+  {{- end }}
+  {{- if .Values.keda.scaling.prometheus.enabled }}
+  - type: prometheus
+    metadata:
+      serverAddress: {{ .Values.keda.scaling.prometheus.serverAddress | quote }}
+      metricName: http_requests
+      threshold: "{{ .Values.keda.scaling.prometheus.threshold }}"
+      query: {{ tpl .Values.keda.scaling.prometheus.query . | quote }}
+      {{- if .Values.keda.scaling.prometheus.authModes }}
+      authModes: {{ toJson .Values.keda.scaling.prometheus.authModes }}
+      {{- end }}
+      {{- if .Values.keda.scaling.prometheus.bearerToken }}
+      bearerToken: {{ .Values.keda.scaling.prometheus.bearerToken | quote }}
+      {{- end }}
+  {{- end }}
+{{- end }}

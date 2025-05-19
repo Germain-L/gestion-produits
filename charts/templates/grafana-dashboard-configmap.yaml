@@ -1,0 +1,621 @@
+{{- if .Values.grafana.dashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-grafana-dashboard
+  namespace: {{ .Release.Namespace | default .Values.namespace }}
+  labels:
+    {{- include "gestion-produits.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+    grafana_dashboard: "1"
+data:
+  dashboard.json: |-
+    {{- $app := printf "%s-app" .Release.Name }}
+    {{- $db := printf "%s-db" .Release.Name }}
+    {{- $ns := .Release.Namespace | default .Values.namespace }}
+    {
+      "title": "Gestion Produits Dashboard",
+      "uid": "gestion-produits-dashboard",
+      "tags": ["gestion-produits", "php", "mysql"],
+      "timezone": "browser",
+      "editable": true,
+      "refresh": "30s",
+      "schemaVersion": 30,
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "templating": {
+        "list": [
+          {
+            "name": "namespace",
+            "type": "custom",
+            "current": {
+              "selected": true,
+              "text": "{{ $ns }}",
+              "value": "{{ $ns }}"
+            },
+            "options": [
+              {
+                "selected": true,
+                "text": "{{ $ns }}",
+                "value": "{{ $ns }}"
+              }
+            ],
+            "query": "{{ $ns }}",
+            "hide": 0
+          },
+          {
+            "name": "app",
+            "type": "custom",
+            "current": {
+              "selected": true,
+              "text": "{{ $app }}",
+              "value": "{{ $app }}"
+            },
+            "options": [
+              {
+                "selected": true,
+                "text": "{{ $app }}",
+                "value": "{{ $app }}"
+              }
+            ],
+            "query": "{{ $app }}",
+            "hide": 0
+          }
+        ]
+      },
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          },
+          {
+            "datasource": "Prometheus",
+            "enable": true,
+            "expr": "kube_pod_created{namespace=\"$namespace\", pod=~\"{{ $app }}.*\"}",
+            "iconColor": "rgb(255, 152, 0)",
+            "name": "Pod Deployments",
+            "titleFormat": "Pod Deployment",
+            "tagKeys": ["pod"],
+            "textFormat": "Pod $${pod} created"
+          }
+        ]
+      },
+      "panels": [
+        {
+          "type": "row",
+          "title": "Application Overview",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "collapsed": false
+        },
+        {
+          "type": "stat",
+          "title": "Pod Status",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 1
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "values": false
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(kube_deployment_status_replicas_available{namespace=\"$namespace\", deployment=\"$app\"})",
+              "legendFormat": "Available Pods",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Request Rate (req/s)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 5
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10
+              },
+              "unit": "reqps",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 20 },
+                  { "color": "red", "value": 50 }
+                ]
+              }
+            }
+          },
+          "description": "HTTP request rate processed by the application",
+          "targets": [
+            {
+              "expr": "sum(rate(nginx_ingress_controller_requests{namespace=\"$namespace\", service=\"$app\", ingress=~\".*\"}[1m])) by (status)",
+              "legendFormat": "{{ "{{" }} status {{ "}}" }} responses",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(nginx_ingress_controller_requests{namespace=\"$namespace\", service=\"$app\"}[1m]))",
+              "legendFormat": "Total",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Response Latency (ms)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 5
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 10
+              },
+              "unit": "ms",
+              "decimals": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 200 },
+                  { "color": "red", "value": 500 }
+                ]
+              }
+            }
+          },
+          "description": "Response time in milliseconds",
+          "targets": [
+            {
+              "expr": "sum(rate(nginx_ingress_controller_request_duration_seconds_sum{namespace=\"$namespace\", service=\"$app\"}[1m])) by (path) / sum(rate(nginx_ingress_controller_request_duration_seconds_count{namespace=\"$namespace\", service=\"$app\"}[1m])) by (path) * 1000",
+              "legendFormat": "{{ "{{" }} path {{ "}}" }}",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket{namespace=\"$namespace\", service=\"$app\"}[1m])) by (le)) * 1000",
+              "legendFormat": "95th percentile",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket{namespace=\"$namespace\", service=\"$app\"}[1m])) by (le)) * 1000",
+              "legendFormat": "Median",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "title": "Resource Usage",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 13
+          },
+          "collapsed": false
+        },
+        {
+          "type": "gauge",
+          "title": "Pod CPU Usage",
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 0,
+            "y": 14
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "values": false
+            },
+            "orientation": "auto",
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 100,
+              "unit": "percent",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 70 },
+                  { "color": "red", "value": 85 }
+                ]
+              }
+            }
+          },
+          "description": "Current CPU usage as percentage of resource limit",
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", pod=~\"$app.*\", container!=\"POD\"}[1m])) * 100 / sum(kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"$app.*\", container!=\"POD\", resource=\"cpu\"})",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "gauge",
+          "title": "Pod Memory Usage",
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 6,
+            "y": 14
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "values": false
+            },
+            "orientation": "auto",
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 100,
+              "unit": "percent",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 75 },
+                  { "color": "red", "value": 90 }
+                ]
+              }
+            }
+          },
+          "description": "Current memory usage as percentage of resource limit",
+          "targets": [
+            {
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", pod=~\"$app.*\", container!=\"POD\"}) * 100 / sum(kube_pod_container_resource_limits{namespace=\"$namespace\", pod=~\"$app.*\", container!=\"POD\", resource=\"memory\"})",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "CPU Usage Over Time (%)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 21
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 10
+              },
+              "unit": "percent",
+              "decimals": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 70 },
+                  { "color": "red", "value": 85 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", pod=~\"$app.*\", container!=\"POD\"}[1m])) by (pod) * 100",
+              "legendFormat": "{{ "{{" }} pod {{ "}}" }}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Memory Usage Over Time (MiB)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 21
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 10
+              },
+              "unit": "mibytes",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 300 },
+                  { "color": "red", "value": 450 }
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", pod=~\"$app.*\", container!=\"POD\"}) by (pod) / 1024 / 1024",
+              "legendFormat": "{{ "{{" }} pod {{ "}}" }}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "title": "Database Performance",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 29
+          },
+          "collapsed": false
+        },
+        {
+          "type": "timeseries",
+          "title": "MySQL Connections",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 30
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 10
+              },
+              "decimals": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 100 },
+                  { "color": "red", "value": 200 }
+                ]
+              }
+            }
+          },
+          "description": "MySQL active connections",
+          "targets": [
+            {
+              "expr": "mysql_global_status_threads_connected{namespace=\"$namespace\"}",
+              "legendFormat": "Connected",
+              "refId": "A"
+            },
+            {
+              "expr": "mysql_global_status_threads_running{namespace=\"$namespace\"}",
+              "legendFormat": "Running",
+              "refId": "B"
+            },
+            {
+              "expr": "mysql_global_status_max_used_connections{namespace=\"$namespace\"}",
+              "legendFormat": "Max Used",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "MySQL Queries (per sec)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 30
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 10
+              },
+              "unit": "qps",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 100 },
+                  { "color": "red", "value": 500 }
+                ]
+              }
+            }
+          },
+          "description": "Database queries executed per second",
+          "targets": [
+            {
+              "expr": "rate(mysql_global_status_commands_total{namespace=\"$namespace\"}[1m])",
+              "legendFormat": "{{ "{{" }} command {{ "}}" }}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "title": "Network & Storage",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 38
+          },
+          "collapsed": false
+        },
+        {
+          "type": "timeseries",
+          "title": "Network Traffic",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 39
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 10
+              },
+              "unit": "Bps",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              }
+            }
+          },
+          "description": "Network traffic in/out",
+          "targets": [
+            {
+              "expr": "sum(rate(container_network_receive_bytes_total{namespace=\"$namespace\", pod=~\"$app.*\"}[1m]))",
+              "legendFormat": "In",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(container_network_transmit_bytes_total{namespace=\"$namespace\", pod=~\"$app.*\"}[1m]))",
+              "legendFormat": "Out",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "type": "bargauge",
+          "title": "PVC Storage Usage",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 39
+          },
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true,
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "values": false
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 100,
+              "unit": "percent",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 70 },
+                  { "color": "red", "value": 85 }
+                ]
+              }
+            }
+          },
+          "description": "Storage utilization for persistent volumes",
+          "targets": [
+            {
+              "expr": "sum(kubelet_volume_stats_used_bytes{namespace=\"$namespace\", persistentvolumeclaim=~\"$app-uploads-pvc\"}) / sum(kubelet_volume_stats_capacity_bytes{namespace=\"$namespace\", persistentvolumeclaim=~\"$app-uploads-pvc\"}) * 100",
+              "legendFormat": "Uploads PVC",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(kubelet_volume_stats_used_bytes{namespace=\"$namespace\", persistentvolumeclaim=~\"$app-db-pvc\"}) / sum(kubelet_volume_stats_capacity_bytes{namespace=\"$namespace\", persistentvolumeclaim=~\"$app-db-pvc\"}) * 100",
+              "legendFormat": "DB PVC",
+              "refId": "B"
+            }
+          ]
+        }
+      ]
+    }
+{{- end }}

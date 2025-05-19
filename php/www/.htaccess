@@ -1,0 +1,12 @@
+# Activer le moteur de réécriture
+RewriteEngine On
+
+# Gérer les requêtes vers /stress-test/
+RewriteRule ^stress-test/(.*)$ stress-test.php [L,QSA]
+
+# Si le fichier ou le dossier demandé n'existe pas
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Rediriger toutes les autres requêtes vers index.php
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]

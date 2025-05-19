@@ -1,0 +1,32 @@
+graph TD
+    subgraph Kubernetes Cluster
+        subgraph gestion-produits [Namespace: gestion-produits]
+            subgraph app [Application]
+                A[Application PHP] -->|Lit/Écrit| B[(MySQL)]
+                A -->|Stocke fichiers| PV1[(Stockage NFS)]
+            end
+            
+            subgraph monitoring [Monitoring]
+                G[Grafana] -->|Lit métriques| P[Prometheus]
+                P -->|Scrappe| A
+                P -->|Scrappe| K[KEDA]
+            end
+            
+            subgraph networking [Réseau]
+                T[Traefik Ingress] -->|Route| A
+                T -->|Route| G
+                K -->|Gère| HPA[HPA]
+                HPA -->|Scale| A
+            end
+        end
+    end
+    
+    User[Utilisateur] -->|HTTPS| T
+    
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#b9f,stroke:#333,stroke-width:2px
+    style G fill:#f66,stroke:#333,stroke-width:2px
+    style P fill:#f96,stroke:#333,stroke-width:2px
+    style K fill:#9cf,stroke:#333,stroke-width:2px
+    style T fill:#9f9,stroke:#333,stroke-width:2px
+    style HPA fill:#ff9,stroke:#333,stroke-width:2px
