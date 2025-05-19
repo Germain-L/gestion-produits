@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - ./php/www:/var/www/html
+      - uploads:/var/www/html/uploads
+    environment:
+      - UPLOAD_DIR=/var/www/html/uploads
+      - DB_HOST=db
+      - DB_NAME=gestion_produits
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_PORT=3306
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password --default-time-zone=+00:00
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gestion_produits
+      MYSQL_ROOT_HOST: '%'
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$${MYSQL_USER}", "-p$${MYSQL_PASSWORD}"]
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  db_data: {}
+  uploads: {}
