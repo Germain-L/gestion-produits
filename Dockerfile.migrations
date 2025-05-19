@@ -1,0 +1,15 @@
+# Use the official MySQL client image as base
+FROM mysql:8.0
+
+# Copy the SQL script
+COPY database/gestion_produits.sql /docker-entrypoint-initdb.d/init.sql
+
+# Copy the entrypoint script
+COPY init-db.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/init-db.sh
+
+# Set the entrypoint
+ENTRYPOINT ["/usr/local/bin/init-db.sh"]
+
+# Default command (can be overridden)
+CMD ["mysqld"]

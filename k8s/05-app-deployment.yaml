@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: gestion-produits
+spec:
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      initContainers:
+      - name: init-db
+        image: registry.germainleignel.com/library/gestion-produits-migrations:latest
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "root"
+        - name: MYSQL_HOST
+          value: "db.gestion-produits.svc.cluster.local"
+        - name: MYSQL_DATABASE
+          value: "gestion_produits"
+      - name: init-uploads
+        image: registry.germainleignel.com/library/gestion-produits-uploads:latest
+        command: ['sh', '-c', 'cp -r /data/* /uploads/']
+        volumeMounts:
+        - name: uploads-data
+          mountPath: /uploads
+      containers:
+      - name: app
+        image: registry.germainleignel.com/library/gestion-produits:latest
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+        ports:
+        - containerPort: 80
+        volumeMounts:
+          - name: uploads-data
+            mountPath: /var/www/html/uploads
+      volumes:
+        - name: uploads-data
+          persistentVolumeClaim:
+            claimName: uploads-pvc
+        - name: init-script
+          configMap:
+            name: db-init-script
+            defaultMode: 0444  # Make the file readable by all users

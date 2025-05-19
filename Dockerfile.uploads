@@ -1,0 +1,12 @@
+# Dockerfile.uploads
+FROM alpine:latest
+
+# Create the uploads directory and copy files
+RUN mkdir -p /data
+COPY php/www/uploads/ /data/
+
+# Set proper permissions
+RUN chmod -R 755 /data
+
+# Keep the container running
+CMD ["tail", "-f", "/dev/null"]
