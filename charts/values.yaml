@@ -132,3 +132,28 @@ certificate:
   secretName: gestion-produits-tls
   dnsNames:
     - gestion-produits-masset.germainleignel.com
+
+# KEDA autoscaling configuration
+keda:
+  enabled: true
+  scaling:
+    minReplicas: 1
+    maxReplicas: 5  # Start with a conservative max to avoid over-provisioning
+    cpu:
+      enabled: true
+      targetUtilization: 70  # Scale up when CPU reaches 70%
+    prometheus:
+      enabled: true
+      # kube-prometheus-stack typically exposes Prometheus at this address
+      serverAddress: "http://prometheus-operated.monitoring.svc:9090"
+      # Query for HTTP request rate
+      query: 'sum(rate(nginx_ingress_controller_requests{exported_service=~"{{ .Release.Name }}-app"}[2m]))'
+      threshold: "10"  # Scale up when request rate exceeds 10 req/s
+      # Add authentication if your Prometheus requires it
+      # authModes: ["bearer"]
+      # bearerToken: "your-bearer-token"  # Optional: Only needed if Prometheus requires authentication
+
+# Grafana dashboard configuration
+grafana:
+  dashboard:
+    enabled: true
