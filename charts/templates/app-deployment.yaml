@@ -6,6 +6,7 @@ metadata:
   labels:
     {{- include "gestion-produits.labels" . | nindent 4 }}
 spec:
+  replicas: {{ .Values.app.replicaCount }}
   selector:
     matchLabels:
       app: {{ .Release.Name }}-app
@@ -15,6 +16,28 @@ spec:
         app: {{ .Release.Name }}-app
         {{- include "gestion-produits.selectorLabels" . | nindent 8 }}
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ .Release.Name }}-app
+              topologyKey: "kubernetes.io/hostname"
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                {{- range .Values.nodeAffinity.nodes }}
+                - {{ . | quote }}
+                {{- end }}
       initContainers:
       - name: init-db
         image: {{ .Values.appMigrations.image.repository }}:{{ .Values.appMigrations.image.tag }}

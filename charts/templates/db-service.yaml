@@ -6,10 +6,15 @@ metadata:
   labels:
     app: {{ .Release.Name }}-db
     {{- include "gestion-produits.labels" . | nindent 4 }}
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
 spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
   selector:
     app: {{ .Release.Name }}-db
   ports:
-    - protocol: TCP
+    - name: mysql
+      protocol: TCP
       port: 3306
       targetPort: 3306
