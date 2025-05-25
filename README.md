@@ -19,15 +19,6 @@ Chart Helm permettant de déployer :
 - KEDA
 - Prometheus & Grafana (pour autoscaling et dashboard)
 
-## 3. Prérequis
-- Kubernetes ≥ 1.21
-- Helm ≥ 3.0
-- StorageClass (ex. longhorn)
-- Cert-Manager (ClusterIssuer `letsencrypt-prod`)
-- Traefik Ingress Controller
-- KEDA
-- Prometheus & Grafana (pour autoscaling et dashboard)
-
 ## 3. Installation
 ```bash
 # Créer le namespace
