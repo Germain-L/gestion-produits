@@ -19,7 +19,77 @@ Chart Helm permettant de déployer :
 - KEDA
 - Prometheus & Grafana (pour autoscaling et dashboard)
 
-## 3. Installation
+## 3. Installation de K3s avec plusieurs nœuds et registre privé
+
+### Prérequis
+- Au moins 2 machines Linux (1 master, 1+ worker)
+- Accès root ou sudo sur toutes les machines
+- Accès à internet depuis toutes les machines
+
+### 1. Installation du nœud master
+
+```bash
+# Installer K3s sur le nœud master
+curl -sfL https://get.k3s.io | sh -
+
+# Récupérer le token pour les workers
+sudo cat /var/lib/rancher/k3s/server/node-token
+```
+
+### 2. Configuration du registre d'images privé
+
+Créer le fichier de configuration pour le registre privé :
+
+```bash
+sudo mkdir -p /etc/rancher/k3s/
+sudo nano /etc/rancher/k3s/registries.yaml
+```
+
+Ajouter la configuration suivante (remplacer par vos paramètres) :
+
+```yaml
+mirrors:
+  "votreregistre.com":
+    endpoint:
+      - "https://votreregistre.com"
+configs:
+  "votreregistre.com":
+    auth:
+      username: votrenomutilisateur
+      password: votremotdepasse
+```
+
+### 3. Redémarrer K3s pour appliquer les changements
+
+```bash
+sudo systemctl restart k3s
+```
+
+### 4. Joindre des nœuds workers
+
+Sur chaque nœud worker, exécuter (remplacer les valeurs entre <>) :
+
+```bash
+curl -sfL https://get.k3s.io | K3S_URL=https://<adresse-ip-du-master>:6443 K3S_TOKEN=<token-du-master> sh -
+```
+
+### 5. Vérifier les nœuds
+
+Sur le nœud master :
+
+```bash
+kubectl get nodes
+```
+
+### 6. Utilisation du registre privé dans les déploiements
+
+Dans vos fichiers de déploiement, spécifiez l'image avec le nom complet du registre :
+
+```yaml
+image: votreregistre.com/monnamespace/monimage:tag
+```
+
+## 4. Installation de l'application
 ```bash
 # Créer le namespace
 kubectl create namespace gestion-produits
@@ -30,7 +100,7 @@ helm install gestion-produits ./charts \
   -f values.yaml
 ```
 
-## 4. Structure du chart
+## 5. Structure du chart
 ```
 charts/
 ├── Chart.yaml              # métadonnées du chart
@@ -44,7 +114,7 @@ charts/
     ├── db-deployment.yaml
 ```
 
-## 5. Démonstration
+## 6. Démonstration
 
 ### Architecture du déploiement
 
@@ -97,7 +167,7 @@ graph TD
 ![Tableau de bord de monitoring](img/longhorn.png)
 *Figure 4 : Métriques de performance dans Longhorn*
 
-## 5. Principales configurations (values.yaml)
+## 7. Principales configurations (values.yaml)
 - **namespace** : namespace Kubernetes
 - **app.image** : repository, tag, pullPolicy
 - **app.resources** : limite et requête CPU/mémoire
@@ -110,7 +180,7 @@ graph TD
 - **keda.scaling** : min/max replicas, CPU et Prometheus scaler
 - **grafana.dashboard** : ConfigMap du dashboard JSON
 
-## 6. Templates clés
+## 8. Templates clés
 - **app-deployment.yaml** : Deployment PHP + init containers si besoin
 - **app-service.yaml** : Service ClusterIP
 - **app-ingress.yaml** : Ressource Ingress Traefik avec TLS
@@ -120,11 +190,11 @@ graph TD
 - **mysql-configmap.yaml** : ConfigMap pour options MySQL
 - **grafana-dashboard-configmap.yaml** : ConfigMap contenant le dashboard JSON
 
-## 7. Accès
+## 9. Accès
 - Application : https://gestion-produits-masset.germainleignel.com
 - Base de données : Credentials dans `values.yaml` (rootPassword)
 
-## 8. Mise à jour et nettoyage
+## 10. Mise à jour et nettoyage
 ```bash
 # Mettre à jour
 helm upgrade gestion-produits ./charts -n gestion-produits -f values.yaml
